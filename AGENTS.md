@@ -121,12 +121,4 @@ Fill these in once the repo is initialized. Until then, do not invent passing co
 - Do not ship backend secrets into the extension.
 - Do not claim tests passed if they were not run.
 
-## Git workflow rules:
-- Never make code changes on main.
-- If the current branch is main, create a new branch before editing.
-- Use one branch per task-sized change / PR.
-- Branch names should look like:
-  - feat/<task-name>
-  - fix/<task-name>
-  - chore/<task-name>
-- Push the branch and open/update a PR instead of merging directly.
+
