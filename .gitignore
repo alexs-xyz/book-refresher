@@ -8,3 +8,9 @@ coverage/
 .env.local
 .DS_Store
 *.log
+*.tsbuildinfo
+packages/shared-types/dist-types/
+packages/shared-types/src/**/*.js
+packages/shared-types/src/**/*.js.map
+packages/shared-types/src/**/*.d.ts
+packages/shared-types/src/**/*.d.ts.map
