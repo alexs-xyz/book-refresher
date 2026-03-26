@@ -6,7 +6,7 @@ export function ReaderLayout({ toolbar, viewport, overlay }: { toolbar: ReactNod
       {toolbar}
       <div style={{ position: 'relative' }}>
         {viewport}
-        <div className="overlay-host">{overlay}</div>
+        {overlay ? <div className="overlay-host">{overlay}</div> : null}
       </div>
     </div>
   );
