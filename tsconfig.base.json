@@ -16,6 +16,9 @@
     "forceConsistentCasingInFileNames": true,
     "useDefineForClassFields": true,
     "jsx": "react-jsx",
-    "baseUrl": "."
+    "baseUrl": ".",
+    "paths": {
+      "@book-refresher/shared-types": ["packages/shared-types/src/index.ts"]
+    }
   }
 }

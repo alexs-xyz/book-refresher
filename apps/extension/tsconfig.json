@@ -7,5 +7,5 @@
     "baseUrl": "."
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "manifest.config.ts", "vite.config.ts"],
-  "references": [{ "path": "../../packages/shared-types" }]
+  "references": [{ "path": "../../packages/shared-types/tsconfig.build.json" }]
 }
