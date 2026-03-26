@@ -1,6 +1,8 @@
 import { useEffect, useEffectEvent, useRef } from 'react';
 
 import { PdfViewerAdapter } from '../pdf/PdfViewerAdapter';
+import { SelectionController } from '../selection/SelectionController';
+import { createEmptySelectionState, type SelectionState } from '../selection/types';
 import type { PdfSession } from '../pdf/PdfSession';
 import type { ReaderDocumentState } from './types';
 
@@ -9,6 +11,7 @@ export type ReaderViewportProps = {
   session: PdfSession | null;
   zoom: number;
   onCurrentPageChange: (pageNumber: number) => void;
+  onSelectionChange: (selection: SelectionState) => void;
   onRenderError: (message: string) => void;
 };
 
@@ -19,6 +22,10 @@ export function ReaderViewport(props: ReaderViewportProps) {
 
   const reportPageChange = useEffectEvent((pageNumber: number) => {
     props.onCurrentPageChange(pageNumber);
+  });
+
+  const reportSelectionChange = useEffectEvent((selection: SelectionState) => {
+    props.onSelectionChange(selection);
   });
 
   const reportRenderError = useEffectEvent((error: unknown) => {
@@ -67,6 +74,28 @@ export function ReaderViewport(props: ReaderViewportProps) {
   useEffect(() => {
     adapterRef.current?.setZoom(props.zoom);
   }, [props.zoom]);
+
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || !props.session || props.document.status !== 'ready') {
+      reportSelectionChange(createEmptySelectionState());
+      return;
+    }
+
+    const controller = new SelectionController({
+      ownerDocument: viewer.ownerDocument,
+      root: viewer
+    });
+
+    const unsubscribe = controller.subscribe(reportSelectionChange);
+    controller.start();
+
+    return () => {
+      unsubscribe();
+      controller.destroy();
+      reportSelectionChange(createEmptySelectionState());
+    };
+  }, [props.document.status, props.session]);
 
   return (
     <div className="reader-viewport">

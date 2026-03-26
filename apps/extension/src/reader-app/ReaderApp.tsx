@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { PdfDocumentLoader } from '../pdf/PdfDocumentLoader';
 import { destroyPdfSession, type PdfSession } from '../pdf/PdfSession';
+import { createEmptySelectionState } from '../selection/types';
 import { ReaderLayout } from './ReaderLayout';
 import { ReaderToolbar } from './ReaderToolbar';
 import { ReaderViewport } from './ReaderViewport';
@@ -36,6 +37,7 @@ export function ReaderApp() {
   const [session, setSession] = useState<PdfSession | null>(null);
   const [zoom, setZoom] = useState(100);
   const [currentPage, setCurrentPage] = useState(1);
+  const [, setSelection] = useState(createEmptySelectionState);
   const loaderRef = useRef(new PdfDocumentLoader());
   const activeSessionRef = useRef<PdfSession | null>(null);
   const loadRequestRef = useRef(0);
@@ -155,6 +157,7 @@ export function ReaderApp() {
           session={session}
           zoom={zoom}
           onCurrentPageChange={setCurrentPage}
+          onSelectionChange={setSelection}
           onRenderError={handleRenderError}
         />
       }
