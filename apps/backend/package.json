@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm --filter @book-refresher/shared-types build && tsx watch src/index.ts",
-    "build": "tsc -p tsconfig.build.json",
-    "start": "node dist/index.js",
+    "build": "pnpm --filter @book-refresher/shared-types build && tsc -p tsconfig.build.json",
+    "start": "pnpm --filter @book-refresher/shared-types build && tsx src/index.ts",
     "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
