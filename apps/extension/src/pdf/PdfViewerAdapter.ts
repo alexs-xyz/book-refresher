@@ -11,7 +11,8 @@ type PageChangingEvent = {
   pageNumber?: number;
 };
 
-const TEXT_LAYER_MODE = 1;
+// PDF.js uses `1` for `TextLayerMode.ENABLE`, but that enum is not exported here.
+const TEXT_LAYER_MODE_ENABLE = 1;
 
 export class PdfViewerAdapter {
   private readonly eventBus = new EventBus();
@@ -36,7 +37,7 @@ export class PdfViewerAdapter {
       viewer: options.viewer,
       eventBus: this.eventBus,
       linkService: this.linkService,
-      textLayerMode: TEXT_LAYER_MODE,
+      textLayerMode: TEXT_LAYER_MODE_ENABLE,
       annotationMode: AnnotationMode.DISABLE
     });
 

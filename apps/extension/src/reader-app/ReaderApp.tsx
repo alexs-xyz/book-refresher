@@ -39,6 +39,25 @@ export function ReaderApp() {
     };
   }, []);
 
+  const handleRenderError = (message: string) => {
+    const activeSession = activeSessionRef.current;
+    activeSessionRef.current = null;
+    setSession(null);
+    setCurrentPage(1);
+
+    if (activeSession) {
+      void destroyPdfSession(activeSession);
+    }
+
+    setDocument((currentDocument) => ({
+      ...currentDocument,
+      pageCount: 0,
+      isLoaded: false,
+      status: 'error',
+      errorMessage: message
+    }));
+  };
+
   const handleFileChange = async (file: File | null) => {
     const requestId = loadRequestRef.current + 1;
     loadRequestRef.current = requestId;
@@ -126,14 +145,7 @@ export function ReaderApp() {
           session={session}
           zoom={zoom}
           onCurrentPageChange={setCurrentPage}
-          onRenderError={(message) => {
-            setDocument((currentDocument) => ({
-              ...currentDocument,
-              isLoaded: false,
-              status: 'error',
-              errorMessage: message
-            }));
-          }}
+          onRenderError={handleRenderError}
         />
       }
       overlay={null}
