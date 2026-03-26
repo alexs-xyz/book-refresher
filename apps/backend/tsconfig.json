@@ -7,5 +7,5 @@
     "types": ["node", "vitest/globals"]
   },
   "include": ["src/**/*.ts", "test/**/*.ts"],
-  "references": [{ "path": "../../packages/shared-types" }]
+  "references": [{ "path": "../../packages/shared-types/tsconfig.build.json" }]
 }

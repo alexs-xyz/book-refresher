@@ -4,6 +4,9 @@
     "noEmit": false,
     "outDir": "dist",
     "rootDir": "src",
+    "paths": {
+      "@book-refresher/shared-types": ["../../packages/shared-types/dist/index.d.ts"]
+    },
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true
