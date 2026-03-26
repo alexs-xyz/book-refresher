@@ -19,6 +19,18 @@ const clampZoom = (nextZoom: number): number => {
   return Math.min(200, Math.max(50, nextZoom));
 };
 
+const reportSessionDestroyError = (error: unknown): void => {
+  console.error('Failed to destroy PDF session.', error);
+};
+
+const destroySessionInBackground = (session: PdfSession | null): void => {
+  if (!session) {
+    return;
+  }
+
+  void destroyPdfSession(session).catch(reportSessionDestroyError);
+};
+
 export function ReaderApp() {
   const [document, setDocument] = useState<ReaderDocumentState>(createInitialDocumentState);
   const [session, setSession] = useState<PdfSession | null>(null);
@@ -32,10 +44,7 @@ export function ReaderApp() {
     return () => {
       const activeSession = activeSessionRef.current;
       activeSessionRef.current = null;
-
-      if (activeSession) {
-        void destroyPdfSession(activeSession);
-      }
+      destroySessionInBackground(activeSession);
     };
   }, []);
 
@@ -44,10 +53,7 @@ export function ReaderApp() {
     activeSessionRef.current = null;
     setSession(null);
     setCurrentPage(1);
-
-    if (activeSession) {
-      void destroyPdfSession(activeSession);
-    }
+    destroySessionInBackground(activeSession);
 
     setDocument((currentDocument) => ({
       ...currentDocument,
@@ -71,7 +77,11 @@ export function ReaderApp() {
       setDocument(createInitialDocumentState());
 
       if (previousSession) {
-        await destroyPdfSession(previousSession);
+        try {
+          await destroyPdfSession(previousSession);
+        } catch (error) {
+          reportSessionDestroyError(error);
+        }
       }
 
       return;
