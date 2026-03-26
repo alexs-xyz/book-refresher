@@ -1,9 +1,15 @@
+import { readFileSync } from 'node:fs';
+
 import { defineManifest } from '@crxjs/vite-plugin';
+
+const extensionPackageJson = JSON.parse(
+  readFileSync(new URL('./package.json', import.meta.url), 'utf8')
+) as { version: string };
 
 export default defineManifest({
   manifest_version: 3,
   name: 'Book Refresher',
-  version: '0.1.0',
+  version: extensionPackageJson.version,
   description: 'Custom PDF.js-based reader with spoiler-safe character refreshers.',
   action: {
     default_title: 'Open Book Refresher Reader'

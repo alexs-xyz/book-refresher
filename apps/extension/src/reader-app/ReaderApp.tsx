@@ -1,106 +1,108 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import { ApiClient } from '../api/ApiClient';
-import { HealthApi } from '../api/HealthApi';
-import { RefresherApi } from '../api/RefresherApi';
-import { settingsRepository } from '../extension/storage/settings-repository';
-import { createPdfSession, type PdfSession } from '../pdf/PdfSession';
-import { SelectionController } from '../selection/SelectionController';
-import { BookRefresherController } from '../tools/book-refresher/BookRefresherController';
-import { BookRefresherPopup } from '../tools/book-refresher/BookRefresherPopup';
-import type { PopupState } from '../tools/book-refresher/types';
+import { PdfDocumentLoader } from '../pdf/PdfDocumentLoader';
+import { destroyPdfSession, type PdfSession } from '../pdf/PdfSession';
 import { ReaderLayout } from './ReaderLayout';
-import { ReaderOverlayHost } from './ReaderOverlayHost';
 import { ReaderToolbar } from './ReaderToolbar';
 import { ReaderViewport } from './ReaderViewport';
 import type { ReaderDocumentState } from './types';
 
-const initialDocumentState: ReaderDocumentState = {
+const createInitialDocumentState = (): ReaderDocumentState => ({
   documentId: `doc_${crypto.randomUUID()}`,
   fileName: '',
   pageCount: 0,
-  isLoaded: false
-};
+  isLoaded: false,
+  status: 'idle'
+});
 
-const initialPopupState: PopupState = {
-  mode: 'hidden',
-  response: null
+const clampZoom = (nextZoom: number): number => {
+  return Math.min(200, Math.max(50, nextZoom));
 };
 
 export function ReaderApp() {
-  const [document, setDocument] = useState<ReaderDocumentState>(initialDocumentState);
+  const [document, setDocument] = useState<ReaderDocumentState>(createInitialDocumentState);
+  const [session, setSession] = useState<PdfSession | null>(null);
   const [zoom, setZoom] = useState(100);
-  const [currentPage] = useState(1);
-  const [popupState, setPopupState] = useState<PopupState>(initialPopupState);
-  const [backendStatus, setBackendStatus] = useState<string>('unknown');
-  const [backendBaseUrl, setBackendBaseUrl] = useState('http://127.0.0.1:8787');
+  const [currentPage, setCurrentPage] = useState(1);
+  const loaderRef = useRef(new PdfDocumentLoader());
+  const activeSessionRef = useRef<PdfSession | null>(null);
+  const loadRequestRef = useRef(0);
 
   useEffect(() => {
-    void settingsRepository.get().then((settings) => {
-      setBackendBaseUrl(settings.backendBaseUrl);
-      setBackendStatus(`backend target: ${settings.backendBaseUrl}`);
-    });
+    return () => {
+      const activeSession = activeSessionRef.current;
+      activeSessionRef.current = null;
+
+      if (activeSession) {
+        void destroyPdfSession(activeSession);
+      }
+    };
   }, []);
 
-  const client = useMemo(() => new ApiClient(backendBaseUrl), [backendBaseUrl]);
-  const healthApi = useMemo(() => new HealthApi(client), [client]);
-  const refresherController = useMemo(
-    () => new BookRefresherController(new RefresherApi(client)),
-    [client]
-  );
-  const selectionController = useMemo(() => new SelectionController(), []);
-
   const handleFileChange = async (file: File | null) => {
+    const requestId = loadRequestRef.current + 1;
+    loadRequestRef.current = requestId;
+
+    const previousSession = activeSessionRef.current;
     if (!file) {
-      setDocument(initialDocumentState);
+      activeSessionRef.current = null;
+      setSession(null);
+      setCurrentPage(1);
+      setZoom(100);
+      setDocument(createInitialDocumentState());
+
+      if (previousSession) {
+        await destroyPdfSession(previousSession);
+      }
+
       return;
     }
 
-    const session: PdfSession = createPdfSession(file);
-    setDocument({
-      documentId: session.documentId,
-      fileName: session.fileName,
-      pageCount: session.pageCount,
-      isLoaded: true
-    });
-  };
-
-  const pingBackend = async () => {
+    activeSessionRef.current = null;
+    setSession(null);
+    setCurrentPage(1);
+    setZoom(100);
     try {
-      const health = await healthApi.getHealth();
-      setBackendStatus(`${health.service} (${health.environment ?? 'unknown env'})`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown health check error';
-      setBackendStatus(`health failed: ${message}`);
-    }
-  };
+      if (previousSession) {
+        await destroyPdfSession(previousSession);
+      }
 
-  const runScaffoldRefresher = async () => {
-    const selection = selectionController.getCurrentSelection();
-
-    if (!selection.isValid) {
-      setPopupState({
-        mode: 'error',
-        response: null,
-        message: selection.invalidReason
+      setDocument({
+        documentId: `doc_${crypto.randomUUID()}`,
+        fileName: file.name,
+        pageCount: 0,
+        isLoaded: false,
+        status: 'loading'
       });
-      return;
-    }
 
-    setPopupState({ mode: 'loading', response: null });
+      const nextSession = await loaderRef.current.loadFromFile(file);
 
-    try {
-      const response = await refresherController.request(selection, document);
-      setPopupState({
-        mode: response.status === 'error' ? 'error' : response.mode,
-        response
+      if (loadRequestRef.current !== requestId) {
+        await destroyPdfSession(nextSession);
+        return;
+      }
+
+      activeSessionRef.current = nextSession;
+      setSession(nextSession);
+      setDocument({
+        documentId: nextSession.documentId,
+        fileName: nextSession.fileName,
+        pageCount: nextSession.pageCount,
+        isLoaded: true,
+        status: 'ready'
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown scaffold refresher error';
-      setPopupState({
-        mode: 'error',
-        response: null,
-        message
+      if (loadRequestRef.current !== requestId) {
+        return;
+      }
+
+      setDocument({
+        documentId: `doc_${crypto.randomUUID()}`,
+        fileName: file.name,
+        pageCount: 0,
+        isLoaded: false,
+        status: 'error',
+        errorMessage: error instanceof Error ? error.message : 'Failed to load PDF file.'
       });
     }
   };
@@ -112,24 +114,29 @@ export function ReaderApp() {
           documentName={document.fileName}
           zoom={zoom}
           currentPage={currentPage}
+          pageCount={document.pageCount}
+          isDocumentReady={document.status === 'ready'}
           onFileChange={handleFileChange}
-          onZoomChange={setZoom}
-          onPingBackend={pingBackend}
-          onRunScaffoldRefresher={runScaffoldRefresher}
+          onZoomChange={(nextZoom) => setZoom(clampZoom(nextZoom))}
         />
       }
-      viewport={<ReaderViewport document={document} />}
-      overlay={
-        <ReaderOverlayHost>
-          <div className="stack">
-            <div className="card">
-              <strong>Backend</strong>
-              <p className="subtle" style={{ marginBottom: 0 }}>{backendStatus}</p>
-            </div>
-            <BookRefresherPopup state={popupState} />
-          </div>
-        </ReaderOverlayHost>
+      viewport={
+        <ReaderViewport
+          document={document}
+          session={session}
+          zoom={zoom}
+          onCurrentPageChange={setCurrentPage}
+          onRenderError={(message) => {
+            setDocument((currentDocument) => ({
+              ...currentDocument,
+              isLoaded: false,
+              status: 'error',
+              errorMessage: message
+            }));
+          }}
+        />
       }
+      overlay={null}
     />
   );
 }
