@@ -1,33 +1,37 @@
 import type { RefresherRequest } from '@book-refresher/shared-types';
 
+import type { PdfSession } from '../../pdf/PdfSession';
+import { SafePrefixBuilder } from '../../selection/SafePrefixBuilder';
 import type { SelectionState } from '../../selection/types';
 import type { ReaderDocumentState } from '../../reader-app/types';
 
-function assertSelectionReadyForRequest(
-  selection: SelectionState
-): asserts selection is SelectionState & { selectedPage: number } {
-  if (!selection.isValid || selection.selectedPage === null) {
-    throw new Error('Cannot build a refresher request from an invalid or incomplete selection.');
-  }
-}
-
-const resolveLocalContext = (selection: SelectionState): string => {
-  const localContext = selection.localContext.trim();
-  return localContext || selection.selectedText;
+export type BookRefresherRequestBuildContext = {
+  root: HTMLElement;
+  session: PdfSession;
+  chosenCandidateId?: string | null;
 };
 
 export class BookRefresherRequestBuilder {
-  build(selection: SelectionState, document: ReaderDocumentState): RefresherRequest {
-    assertSelectionReadyForRequest(selection);
-    const localContext = resolveLocalContext(selection);
+  async build(
+    selection: SelectionState,
+    document: ReaderDocumentState,
+    context: BookRefresherRequestBuildContext
+  ): Promise<RefresherRequest> {
+    const safePrefix = await new SafePrefixBuilder({
+      root: context.root,
+      pdfDocument: context.session.pdfDocument
+    }).build(selection);
 
     return {
       requestId: crypto.randomUUID(),
       documentId: document.documentId,
       selectedText: selection.selectedText,
-      selectedPage: selection.selectedPage,
-      localContext,
-      prefixText: 'TODO: safe prefix not implemented yet',
+      selectedPage: safePrefix.selectedPage,
+      localContext: safePrefix.localContext,
+      prefixText: safePrefix.prefixText,
+      ...(context.chosenCandidateId !== undefined
+        ? { chosenCandidateId: context.chosenCandidateId }
+        : {}),
       documentMeta: {
         fileName: document.fileName,
         pageCount: document.pageCount || undefined
