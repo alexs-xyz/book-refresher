@@ -1,18 +1,17 @@
+import type { RefresherAmbiguousData } from '@book-refresher/shared-types';
+
 import type {
-  RefresherAmbiguousData,
-  RefresherRequest,
-  RefresherResponse
-} from '@book-refresher/shared-types';
+  RefresherPipelineResult,
+  ValidatedRefresherRequest
+} from './refresher-pipeline.types';
 
 export class RefresherService {
-  async run(request: RefresherRequest): Promise<RefresherResponse> {
-    const normalizedSelection = request.selectedText.trim();
-    const prefixLength = request.prefixText.trim().length;
+  async run(request: ValidatedRefresherRequest): Promise<RefresherPipelineResult> {
+    const normalizedSelection = request.normalizedSelectedText;
+    const prefixLength = request.prefixLength;
 
     if (request.chosenCandidateId) {
       return {
-        requestId: request.requestId,
-        status: 'ok',
         mode: 'normal',
         data: {
           resolvedName: normalizedSelection,
@@ -25,8 +24,7 @@ export class RefresherService {
           ],
           relatedEntities: [],
           pageReferences: [Math.max(1, request.selectedPage - 1), request.selectedPage]
-        },
-        error: null
+        }
       };
     }
 
@@ -40,31 +38,23 @@ export class RefresherService {
       };
 
       return {
-        requestId: request.requestId,
-        status: 'ok',
         mode: 'ambiguous',
-        data,
-        error: null
+        data
       };
     }
 
     if (normalizedSelection.split(/\s+/).length > 3) {
       return {
-        requestId: request.requestId,
-        status: 'ok',
         mode: 'lowConfidence',
         data: {
           message:
             'The scaffold could not confidently treat this selection as a character. Replace this rule with the real candidate-resolution stage.'
-        },
-        error: null
+        }
       };
     }
 
     if (prefixLength < 800) {
       return {
-        requestId: request.requestId,
-        status: 'ok',
         mode: 'sparse',
         data: {
           resolvedName: normalizedSelection,
@@ -77,14 +67,11 @@ export class RefresherService {
           ],
           relatedEntities: [],
           pageReferences: [request.selectedPage]
-        },
-        error: null
+        }
       };
     }
 
     return {
-      requestId: request.requestId,
-      status: 'ok',
       mode: 'normal',
       data: {
         resolvedName: normalizedSelection,
@@ -97,8 +84,7 @@ export class RefresherService {
         ],
         relatedEntities: ['Placeholder Related Entity'],
         pageReferences: [Math.max(1, request.selectedPage - 2), request.selectedPage]
-      },
-      error: null
+      }
     };
   }
 }

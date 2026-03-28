@@ -104,9 +104,16 @@ Spoiler safety depends on architecture. The system must prove that it can constr
 ### Goal
 Deliver the first real end-to-end Book Refresher behavior.
 
+### Sequencing Note
+Milestone 4 should be executed in two tracks while Milestone 3 is still being finished:
+- backend-first pipeline slices can proceed against the stable shared request/response contract and fixture inputs
+- live frontend/backend integration waits until Milestone 3 safe-prefix construction is stable enough that `BookRefresherRequestBuilder` produces real `prefixText` and `localContext`
+- do not rename shared contract fields such as `selectedText`, `selectedPage`, `localContext`, `prefixText`, or `chosenCandidateId` during this overlap
+
 ### Scope
-- connect frontend request flow to backend
+#### A. Backend slices that can start before Milestone 3 is fully done
 - validate request payload
+- harden the route shell and internal pipeline seams
 - implement **rules-first entity checking**
 - call the cheaper model only when necessary
 - implement conservative alias expansion
@@ -122,13 +129,19 @@ Deliver the first real end-to-end Book Refresher behavior.
 - determine normal vs sparse output mode
 - generate the final refresher using the better model
 - support structured ambiguous and low-confidence responses
+
+#### B. Integration slices gated on Milestone 3 readiness
+- connect frontend request flow to backend after boundary output is stable
+- keep the shared request contract stable across the frontend/backend handoff
+- support ambiguity follow-up using `chosenCandidateId`
 - return popup-ready response data
 
 ### Why This Milestone Exists
 This is the milestone where Book Refresher becomes an actual working feature rather than a mocked interaction.
 
 ### Exit Criteria
-- a valid selection can produce a real refresher end-to-end
+- backend pipeline behavior is validated against fixture-based requests before frontend cutover
+- a valid selection can produce a real refresher end-to-end once Milestone 3 request building is stable
 - ambiguous cases return user choices instead of bluffing
 - sparse-context cases return compact output
 - low-confidence/non-character cases are handled explicitly
@@ -140,6 +153,13 @@ This is the milestone where Book Refresher becomes an actual working feature rat
 
 ### Goal
 Make the working system reliable enough to feel like an MVP instead of a prototype.
+
+### Execution Note
+- Treat this milestone as **dependency-gated hardening** on top of Milestone 3 and Milestone 4, not as parallel feature development.
+- Boundary hardening and lightweight PDF noise control should start only after the safe-prefix path is real enough to harden.
+- Retrieval tuning and request/response robustness should start only after the backend refresher flow is real enough to tune.
+- Curated PDF fixture work can begin earlier and should be used as the evaluation harness for the rest of the milestone.
+- Diagnostics, full docs, and release-readiness work remain in Milestone 6 even if backlog organization groups some of that work nearby.
 
 ### Scope
 #### A. Selection and Boundary Hardening
@@ -191,6 +211,15 @@ A working feature is not enough. The MVP must behave predictably, fail clearly, 
 
 ### Goal
 Turn the hardened working product into a coherent MVP that is understandable, runnable, and ready to present or hand off.
+
+### Execution Note
+- Start Milestone 6 planning now, but keep implementation gated on Milestone 5 hardening actually being completed and verified.
+- Current sequencing reality for this plan:
+  - Milestone 3 is almost finished
+  - Milestone 4 is actively being implemented
+  - Milestone 5 has planning but has not started implementation yet
+- Some backlog and documentation organization still groups release-prep work near Milestone 5, but for execution these items belong to Milestone 6 and should stay deferred until Milestone 5 exit criteria are met.
+- UI polish, diagnostics shape, config structure, and documentation outlines can be prepared earlier, but they should land against the hardened Milestone 5 behavior rather than today's in-flight Milestone 3 and Milestone 4 seams.
 
 ### Scope
 #### A. Practical UI / UX Polish
@@ -279,6 +308,9 @@ This sequence follows the actual risk and product dependency stack:
 - then harden and tune
 - then package the result as an MVP
 
+Milestone 4 may begin on backend-only slices once the shared contract is stable, but it is not complete until Milestone 3 boundary output is ready for live request assembly.
+Milestone 6 planning may begin before Milestone 5 implementation starts, but Milestone 6 execution should not absorb unfinished Milestone 5 hardening work.
+
 ---
 
 ## MVP Definition
@@ -316,4 +348,3 @@ This MVP plan intentionally favors:
 - practical extensibility for future reader tools
 
 Book Refresher V1 is therefore not just a one-off summary feature. It is the first tool inside a browser-based PDF reading platform that the project can expand later.
-

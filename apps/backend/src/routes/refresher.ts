@@ -3,10 +3,11 @@ import type { FastifyInstance } from 'fastify';
 import { refresherRequestSchema, refresherResponseSchema } from '@book-refresher/shared-types';
 
 import { createErrorEnvelope } from '../errors/public-error';
-import { RefresherService } from '../services/refresher/refresher-service';
+import { RefresherController } from '../services/refresher/refresher-controller';
+import { RefresherRequestValidationError } from '../services/refresher/refresher-request-validation-error';
 
 export async function registerRefresherRoute(app: FastifyInstance) {
-  const service = new RefresherService();
+  const controller = new RefresherController();
 
   app.post('/api/refresher', async (request, reply) => {
     const parsed = refresherRequestSchema.safeParse(request.body);
@@ -26,7 +27,17 @@ export async function registerRefresherRoute(app: FastifyInstance) {
       );
     }
 
-    const response = await service.run(parsed.data);
-    return reply.status(200).send(refresherResponseSchema.parse(response));
+    try {
+      const response = await controller.handle(parsed.data);
+      return reply.status(200).send(refresherResponseSchema.parse(response));
+    } catch (error) {
+      if (error instanceof RefresherRequestValidationError) {
+        return reply.status(400).send(
+          createErrorEnvelope(parsed.data.requestId, 'REQUEST_INVALID', error.message, false)
+        );
+      }
+
+      throw error;
+    }
   });
 }
